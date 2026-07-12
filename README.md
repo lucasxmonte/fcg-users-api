@@ -96,3 +96,8 @@ kubectl get pods -n fcg
 ```
 
 ## Grupo 17 — Pos-Tech FIAP
+Letícia Lopes Ribeiro Vasconcelos
+Lucas Monte Ferreri Castilho
+Marcelo Henrique Cornelis Rei
+Rafael Ribeiro Arantes
+Vinícius Calixto Real
