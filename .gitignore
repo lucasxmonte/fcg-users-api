@@ -1,0 +1,10 @@
+bin/
+obj/
+*.user
+.DS_Store
+.env
+*.env
+.vs/
+.idea/
+*.log
+nupkg/
