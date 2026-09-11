@@ -1,4 +1,5 @@
 using FluentValidation;
+using Prometheus;
 using Serilog;
 using FCG.UsersAPI.API.Endpoints;
 using FCG.UsersAPI.API.Middlewares;
@@ -106,6 +107,10 @@ if (!app.Environment.IsProduction())
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// ── Prometheus metrics ─────────────────────────────────────────────
+app.UseHttpMetrics();   // coleta latência, status codes e throughput por rota
+app.MapMetrics();       // expõe GET /metrics para o Prometheus
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "users-api", timestamp = DateTime.UtcNow }))
    .WithTags("Sistema").ExcludeFromDescription();
