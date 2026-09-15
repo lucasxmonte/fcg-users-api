@@ -1,103 +1,99 @@
-# FCG Users API — Microsserviço de Usuários
+# FCG Users API
 
-Microsserviço responsável por **cadastro, autenticação (JWT) e autorização** de usuários da plataforma FIAP Cloud Games (FCG).
+Microsserviço responsável por **autenticação, registro e gestão de usuários** da plataforma FCG (Full Cycle Gaming).
 
-## Responsabilidades
+## Visão Geral
 
-- Registro de usuários comuns e administradores
-- Autenticação via JWT (access token 15min + refresh token rotativo 7 dias)
-- Listagem e promoção de usuários (admin)
-- Publicação de `UserCreatedEvent` via RabbitMQ (consumido pelo NotificationsAPI)
-
-## Stack
-
-| Componente | Tecnologia |
+| | |
 |---|---|
-| Framework | .NET 8 Minimal API |
-| ORM | EF Core 8 + Npgsql (PostgreSQL) |
-| Mensageria | MassTransit + RabbitMQ |
-| Auth | JWT (HMAC SHA256) + Refresh Token |
-| Hash | BCrypt (WorkFactor 12) |
-| Docs | Swagger / OpenAPI |
+| **Runtime** | .NET 8 — Minimal API |
+| **Porta local** | `8081` (Docker: `8081:8080`) |
+| **Banco de dados** | PostgreSQL 16 |
+| **Autenticação** | JWT Bearer |
+| **Mensageria** | RabbitMQ + MassTransit |
+| **Swagger** | http://localhost:8081/swagger |
+
+## Estrutura do Projeto
+
+```
+fcg-users-api/
+├── src/
+│   ├── FCG.UsersAPI.Domain/          # Entidades, interfaces, value objects
+│   ├── FCG.UsersAPI.Application/     # Commands, queries, handlers, DTOs
+│   ├── FCG.UsersAPI.Infrastructure/  # EF Core, JWT, RabbitMQ, repositórios
+│   └── FCG.UsersAPI.API/             # Endpoints Minimal API, middlewares, Program.cs
+├── tests/
+│   ├── FCG.UsersAPI.Tests/           # Testes unitários (xUnit)
+│   └── FCG.UsersAPI.IntegrationTests/# Testes de integração
+└── Dockerfile
+```
 
 ## Endpoints
 
-| Método | Rota | Auth | Descrição |
-|---|---|---|---|
-| POST | `/api/auth/login` | público | Autentica e retorna tokens |
-| POST | `/api/auth/refresh` | público | Renova access token |
-| POST | `/api/auth/logout` | autenticado | Invalida refresh token |
-| GET | `/api/usuarios` | admin | Lista usuários |
-| POST | `/api/usuarios/registrar` | público | Registra usuário comum |
-| POST | `/api/usuarios/administradores` | admin | Cria administrador |
-| PATCH | `/api/usuarios/{id}/promover` | admin | Promove para admin |
-| GET | `/health` | público | Health check |
+| Método | Rota | Autenticação | Descrição |
+|--------|------|:---:|---|
+| `POST` | `/auth/registro` | ❌ | Cadastro de novo usuário |
+| `POST` | `/auth/login` | ❌ | Login — retorna JWT |
+| `GET` | `/usuarios/perfil` | ✅ | Perfil do usuário autenticado |
+| `PUT` | `/usuarios/perfil` | ✅ | Atualiza dados do perfil |
+| `GET` | `/health` | ❌ | Health check |
+| `GET` | `/metrics` | ❌ | Métricas Prometheus |
+
+## JWT
+
+```
+Issuer:   fcg-users-api
+Audience: fcg-platform
+Secret:   fcg-super-secret-key-change-in-production-min32chars!
+Expiração: 8 horas
+```
+
+## Eventos Publicados (RabbitMQ)
+
+| Evento | Quando |
+|--------|--------|
+| `UsuarioCadastradoEvent` | Novo usuário registrado |
 
 ## Variáveis de Ambiente
 
-| Variável | Descrição | Padrão |
-|---|---|---|
-| `ConnectionStrings__Postgres` | Connection string do PostgreSQL | — |
-| `Jwt__Secret` | Secret HMAC SHA256 (mín. 32 chars) | — |
-| `Jwt__Issuer` | Issuer do token | `fcg-users-api` |
-| `Jwt__Audience` | Audience do token | `fcg-platform` |
-| `RabbitMQ__Host` | Host do RabbitMQ | `localhost` |
-| `RabbitMQ__Username` | Usuário RabbitMQ | `guest` |
-| `RabbitMQ__Password` | Senha RabbitMQ | `guest` |
-| `SeedAdmin__Email` | E-mail do admin inicial | `admin@fcg.com` |
-| `SeedAdmin__Senha` | Senha do admin inicial | `TrocarEm@2026` |
+```env
+ConnectionStrings__Postgres=Host=postgres;Database=fcg;Username=fcg_app;Password=fcg_app_dev
+Jwt__Secret=fcg-super-secret-key-change-in-production-min32chars!
+Jwt__Issuer=fcg-users-api
+Jwt__Audience=fcg-platform
+RabbitMQ__Host=rabbitmq
+RabbitMQ__VirtualHost=/
+RabbitMQ__Username=guest
+RabbitMQ__Password=guest
+SeedAdmin__Email=admin@fcg.com
+SeedAdmin__Senha=TrocarEm@2026
+```
 
-## Executar com Docker Compose
+## Executar Localmente
 
 ```bash
-docker compose up -d --build
+# Via Docker Compose (recomendado)
+cd ../fcg-orchestration
+docker compose up -d users-api
+
+# Via dotnet
+cd src/FCG.UsersAPI.API
+dotnet run
 ```
 
-API disponível em: `http://localhost:8081`
-Swagger: `http://localhost:8081/swagger`
-
-## Executar localmente
+## Executar Testes
 
 ```bash
-# Pré-requisitos: .NET 8 SDK + PostgreSQL + RabbitMQ
-
-dotnet restore
-dotnet ef database update -p src/FCG.UsersAPI.Infrastructure -s src/FCG.UsersAPI.API
-dotnet run --project src/FCG.UsersAPI.API
+dotnet test
 ```
 
-## Gerar Migrations
+## Observabilidade
 
-```bash
-dotnet ef migrations add Initial \
-  -p src/FCG.UsersAPI.Infrastructure \
-  -s src/FCG.UsersAPI.API \
-  -o Persistencia/Migrations
-```
+- **Health check:** `GET /health`
+- **Métricas Prometheus:** `GET /metrics` (scraped pelo Prometheus a cada 15s)
+- **Biblioteca:** `prometheus-net.AspNetCore 8.2.1`
 
-## Deploy Kubernetes
+---
 
-```bash
-kubectl apply -f k8s/namespace.yaml
-kubectl apply -f k8s/
-kubectl get pods -n fcg
-```
-
-## Evento publicado
-
-```json
-// UserCreatedEvent (publicado após cada registro bem-sucedido)
-{
-  "userId": "guid",
-  "nome": "João Silva",
-  "email": "joao@email.com",
-  "dataCadastro": "2026-01-01T00:00:00Z"
-}
-```
-
-## Grupo 17 — Pos-Tech FIAP
-- Letícia Lopes Ribeiro Vasconcelos
-- Lucas Monte Ferreri Castilho
-- Marcelo Henrique Cornelis Rei
-- Rafael Ribeiro Arantes
-- Vinícius Calixto Real
+> **FIAP Pós-Tech — Software Architecture | Tech Challenge**
+Lucas Monte Ferreri Castilho
