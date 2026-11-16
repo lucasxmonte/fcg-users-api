@@ -11,8 +11,7 @@ using FCG.UsersAPI.Infrastructure.Persistencia;
 using FCG.UsersAPI.Infrastructure.Persistencia.Seed;
 using Microsoft.EntityFrameworkCore;
 
-// Em Testing, NÃO inicializa o UseSerilog para evitar "The logger is already frozen"
-// (xUnit cria uma WebApplicationFactory por classe de teste — todas rodam no mesmo processo).
+
 var isTestEnv = string.Equals(
     Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
     "Testing",
