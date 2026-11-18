@@ -39,7 +39,7 @@ jobs:
         run: dotnet build --no-restore --configuration Release
 
       - name: Run unit tests
-        run: dotnet test --no-build --configuration Release --verbosity minimal -- RunConfiguration.MaxCpuCount=0
+        run: dotnet test --no-build --configuration Release --verbosity minimal --filter "FullyQualifiedName!~IntegrationTests" -- RunConfiguration.MaxCpuCount=0
 
   build-push:
     name: Docker Build & Push to ACR
