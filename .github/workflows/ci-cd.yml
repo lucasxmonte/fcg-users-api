@@ -68,6 +68,16 @@ jobs:
     needs: build-push
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Install kubelogin
+        uses: azure/use-kubelogin@v1
+        with:
+          kubelogin-version: 'latest'
+
       - name: Set AKS context
         uses: azure/aks-set-context@v4
         with:
@@ -75,11 +85,6 @@ jobs:
           cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
           admin: false
           use-kubelogin: true
-
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Update deployment image
         run: |
